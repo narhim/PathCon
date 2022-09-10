@@ -7,20 +7,33 @@ from utils import sparse_to_tuple
 
 args = None
 
+def decoder(triplets, dict_entities, dict_relations):
+    for triplet in triplets:
+        head = {i for i in dict_entities if dict_entities[i]==triplet[0]}
+        tail = {i for i in dict_entities if dict_entities[i]==triplet[1]}
+        relation = {i for i in dict_relations if dict_relations[i]==triplet[2]}
+        decoded.append((head,relation,tail))
+
+def write_list_to_file(name,list_triples):
+    with open(name,"w") as f:
+        f.write("HEAD\tRELATION\tTAIL\n")
+        for triplet in list_triples:
+            f.write(str(triplet[0]) + "\t" + str(triplet[1]) + "\t" + str(triplet[2]) + "\n")
+
 
 def train(model_args, data):
-    global args, model, sess
+    global args, model, sess, decoded
+    decoded = []
     args = model_args
 
     # extract data
-    triplets, paths, n_relations, neighbor_params, path_params = data
+    triplets, paths, n_relations, neighbor_params, path_params, entity_dict, relation_dict = data
 
     train_triplets, valid_triplets, test_triplets = triplets
     train_edges = np.array(range(len(train_triplets)), np.int32)
     train_entity_pairs = np.array([[triplet[0], triplet[1]] for triplet in train_triplets], np.int32)
     valid_entity_pairs = np.array([[triplet[0], triplet[1]] for triplet in valid_triplets], np.int32)
     test_entity_pairs = np.array([[triplet[0], triplet[1]] for triplet in test_triplets], np.int32)
-
     train_paths, valid_paths, test_paths = paths
 
     train_labels = np.array([triplet[2] for triplet in train_triplets], np.int32)
@@ -62,6 +75,7 @@ def train(model_args, data):
 
             # evaluation
             print('epoch %2d   ' % step, end='')
+
             train_acc, _ = evaluate(train_entity_pairs, train_paths, train_labels)
             valid_acc, _ = evaluate(valid_entity_pairs, valid_paths, valid_labels)
             test_acc, test_scores = evaluate(test_entity_pairs, test_paths, test_labels)
@@ -73,7 +87,7 @@ def train(model_args, data):
             current_res += '   mrr: %.4f   mr: %.4f   h1: %.4f   h3: %.4f   h5: %.4f' % (mrr, mr, hit1, hit3, hit5)
             print('           mrr: %.4f   mr: %.4f   h1: %.4f   h3: %.4f   h5: %.4f' % (mrr, mr, hit1, hit3, hit5))
             print()
-
+            decoder(test_triplets, entity_dict,relation_dict)
             # update final results according to validation accuracy
             if valid_acc > best_valid_acc:
                 best_valid_acc = valid_acc
@@ -81,6 +95,8 @@ def train(model_args, data):
 
         # show final evaluation result
         print('final results\n%s' % final_res)
+        # output test
+        write_list_to_file("test_relations.txt",decoded)
 
 
 def get_feed_dict(entity_pairs, train_edges, paths, labels, start, end):
@@ -121,6 +137,7 @@ def evaluate(entity_pairs, paths, labels):
 
 
 def calculate_ranking_metrics(triplets, scores, true_relations):
+
     for i in range(scores.shape[0]):
         head, tail, relation = triplets[i]
         for j in true_relations[head, tail] - {relation}:

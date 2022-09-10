@@ -115,7 +115,6 @@ def get_paths(train_triplets, valid_triplets, test_triplets):
 
     if not os.path.exists(directory):
         os.mkdir(directory)
-
     if os.path.exists(directory + 'train_paths_' + length + '.pkl'):
         print('loading paths from files ...')
         train_paths = pickle.load(open(directory + 'train_paths_' + length + '.pkl', 'rb'))
@@ -187,4 +186,4 @@ def load_data(model_args):
         paths = [None] * 3
         path_params = None
 
-    return triplets, paths, len(relation_dict), neighbor_params, path_params
+    return triplets, paths, len(relation_dict), neighbor_params, path_params, entity_dict, relation_dict
