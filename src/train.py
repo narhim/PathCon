@@ -7,14 +7,15 @@ from utils import sparse_to_tuple
 
 args = None
 
-def decoder(triplets, dict_entities, dict_relations):
+def decoder(triplets, dict_entities, dict_relations): #TMS
+    '''To reverse encoding of entities.'''
     for triplet in triplets:
         head = {i for i in dict_entities if dict_entities[i]==triplet[0]}
         tail = {i for i in dict_entities if dict_entities[i]==triplet[1]}
         relation = {i for i in dict_relations if dict_relations[i]==triplet[2]}
         decoded.append((head,relation,tail))
 
-def write_list_to_file(name,list_triples):
+def write_list_to_file(name,list_triples): #TMS
     with open(name,"w") as f:
         f.write("HEAD\tRELATION\tTAIL\n")
         for triplet in list_triples:
@@ -42,6 +43,7 @@ def train(model_args, data):
 
     # define the model
     model = PathCon(args, n_relations, neighbor_params, path_params)
+    saver = tf.train.Saver()
 
     # prepare for top-k evaluation
     true_relations = defaultdict(set)
@@ -52,19 +54,19 @@ def train(model_args, data):
 
     with tf.Session() as sess:
         print('start training ...')
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.global_variables_initializer()) #The variables are called earlier, but we need to initialize them in order to allocate memory for them and set its initial values.
 
-        for step in range(args.epoch):
+        for step in range(args.epoch): #For each epoch
 
             # shuffle training data
-            index = np.arange(len(train_labels))
-            np.random.shuffle(index)
+            index = np.arange(len(train_labels)) #Give me evenly spaced in intervals btw 0 and length of train labels.
+            np.random.shuffle(index) #Shuffle the index.
             if args.use_context:
-                train_entity_pairs = train_entity_pairs[index]
-                train_edges = train_edges[index]
+                train_entity_pairs = train_entity_pairs[index] #Subset entity pairs.
+                train_edges = train_edges[index] #Subset number train edges
             if args.use_path:
-                train_paths = train_paths[index]
-            train_labels = train_labels[index]
+                train_paths = train_paths[index] #Subset train paths
+            train_labels = train_labels[index] #Gold labels
 
             # training
             s = 0
@@ -87,7 +89,6 @@ def train(model_args, data):
             current_res += '   mrr: %.4f   mr: %.4f   h1: %.4f   h3: %.4f   h5: %.4f' % (mrr, mr, hit1, hit3, hit5)
             print('           mrr: %.4f   mr: %.4f   h1: %.4f   h3: %.4f   h5: %.4f' % (mrr, mr, hit1, hit3, hit5))
             print()
-            decoder(test_triplets, entity_dict,relation_dict)
             # update final results according to validation accuracy
             if valid_acc > best_valid_acc:
                 best_valid_acc = valid_acc
@@ -96,7 +97,8 @@ def train(model_args, data):
         # show final evaluation result
         print('final results\n%s' % final_res)
         # output test
-        write_list_to_file("test_relations.txt",decoded)
+        decoder(test_triplets, entity_dict,relation_dict) #TMS
+        write_list_to_file("predictions_fb15k.tsv",decoded) #TMS
 
 
 def get_feed_dict(entity_pairs, train_edges, paths, labels, start, end):
